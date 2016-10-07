@@ -10,6 +10,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.client.RestTemplate;
 
+import javax.servlet.http.HttpServletRequest;
+
 @Controller
 public class WallController {
 
@@ -27,10 +29,11 @@ public class WallController {
 	}
 
 	@RequestMapping({"/wall"})
-	public String getWallView(Model model) {
+	public String getWallView(Model model, HttpServletRequest req) {
 		model.addAttribute("validated", connectionRepository.findPrimaryConnection(Facebook.class) != null);
 
 		if (connectionRepository.findPrimaryConnection(Facebook.class) != null) {
+			req.getSession().setAttribute("u", facebook.userOperations().getUserProfile().getId());
 			model.addAttribute("username", facebook.userOperations().getUserProfile().getFirstName());
 		}
 		return "wall";
@@ -39,6 +42,12 @@ public class WallController {
 	@RequestMapping({"/profile"})
 	public String getProfileView(Model model) {
 		return "profile";
+	}
+
+	@RequestMapping({"/myprofile"})
+	public String getMyProfileView(Model model, HttpServletRequest req) {
+		model.addAttribute("id", req.getSession().getAttribute("u"));
+		return "myprofile";
 	}
 
 	@RequestMapping({"/map"})
@@ -67,8 +76,9 @@ public class WallController {
 	}
 
 	@RequestMapping("/logout")
-	public String logout(Model model) {
+	public String logout(Model model, HttpServletRequest req) {
 		connectionRepository.removeConnections("facebook");
+		req.getSession().setAttribute("u", null);
 		return "redirect:/";
 	}
 }
