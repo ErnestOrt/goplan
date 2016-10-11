@@ -1,9 +1,11 @@
 package org.ernest.applications.goplus.controllers;
 
 
+import org.ernest.applications.goplus.services.UserService;
 import org.springframework.social.connect.ConnectionKey;
 import org.springframework.social.connect.ConnectionRepository;
 import org.springframework.social.facebook.api.Facebook;
+import org.springframework.social.facebook.api.User;
 import org.springframework.social.facebook.api.impl.FacebookTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,10 +19,12 @@ public class WallController {
 
 	private Facebook facebook;
 	private ConnectionRepository connectionRepository;
+	private UserService userService;
 
-	public WallController(Facebook facebook, ConnectionRepository connectionRepository) {
+	public WallController(Facebook facebook, ConnectionRepository connectionRepository, UserService userService) {
 		this.facebook = facebook;
 		this.connectionRepository = connectionRepository;
+		this.userService = userService;
 	}
 
 	@RequestMapping({"/"})
@@ -33,20 +37,29 @@ public class WallController {
 		model.addAttribute("validated", connectionRepository.findPrimaryConnection(Facebook.class) != null);
 
 		if (connectionRepository.findPrimaryConnection(Facebook.class) != null) {
-			req.getSession().setAttribute("u", facebook.userOperations().getUserProfile().getId());
-			model.addAttribute("username", facebook.userOperations().getUserProfile().getFirstName());
+			User user = facebook.userOperations().getUserProfile();
+
+			StringBuilder username = new StringBuilder("");
+			username.append(user.getFirstName() == null ? "" : user.getFirstName() + " ");
+			username.append(user.getMiddleName() == null ? "" : user.getMiddleName() + " ");
+			username.append(user.getLastName() == null ? "" : user.getLastName());
+
+			req.getSession().setAttribute("u", userService.introduceUser(user.getId(), username.toString()));
+			model.addAttribute("username", username);
 		}
 		return "wall";
 	}
 
 	@RequestMapping({"/profile"})
 	public String getProfileView(Model model) {
+
 		return "profile";
 	}
 
 	@RequestMapping({"/myprofile"})
 	public String getMyProfileView(Model model, HttpServletRequest req) {
-		model.addAttribute("id", req.getSession().getAttribute("u"));
+		if(req.getSession().getAttribute("u") == null) return "wall";
+		model.addAttribute("myprofileinfo", userService.getMyProfileInformation((Long)req.getSession().getAttribute("u")));
 		return "myprofile";
 	}
 
